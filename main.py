@@ -1,10 +1,9 @@
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from nltk.corpus import wordnet as wn
 from nltk import tokenize
 from googletrans import Translator
 from flask import Flask, request, jsonify
 from celery import Celery
-
-from languages import LANGCODES
 
 translator = Translator()
 app = Flask(__name__)
@@ -19,11 +18,13 @@ celery.conf.update(app.config)
 def health_check():
     return 'Translation Service is up.'
 
-@app.route('/sentiment', methods=['POST'])
+
+@app.route('/detect-sentiment', methods=['POST'])
 def sentiment():
     form = request.form
     text = form['text']
     return _sentiment(text)
+
 
 @celery.task
 def _sentiment(text):
@@ -31,7 +32,21 @@ def _sentiment(text):
     sentiment_score = sid.polarity_scores(text)
     return sentiment_score
 
-@app.route('/detect', methods=['POST'])
+
+@app.route('/synonyms', methods=['POST'])
+def synonyms():
+    form = request.form
+    text = form['text']
+    return _synonyms(text)
+
+
+@celery.task
+def _synonyms(text):
+    synset = wn.synsets(text)
+    return str(synset[0].hyponyms())
+
+
+@app.route('/detect-lang', methods=['POST'])
 def detect():
     form = request.form
     text = form['text']
@@ -56,7 +71,6 @@ def translate():
 def _translate(text, target):
     translated_text = translator.translate(text, target)
     return translated_text.text
-
 
 
 if __name__ == '__main__':
