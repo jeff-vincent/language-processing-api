@@ -1,3 +1,5 @@
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from nltk import tokenize
 from googletrans import Translator
 from flask import Flask, request, jsonify
 from celery import Celery
@@ -17,6 +19,17 @@ celery.conf.update(app.config)
 def health_check():
     return 'Translation Service is up.'
 
+@app.route('/sentiment', methods=['POST'])
+def sentiment():
+    form = request.form
+    text = form['text']
+    return _sentiment(text)
+
+@celery.task
+def _sentiment(text):
+    sid = SentimentIntensityAnalyzer()
+    sentiment_score = sid.polarity_scores(text)
+    return sentiment_score
 
 @app.route('/detect', methods=['POST'])
 def detect():
